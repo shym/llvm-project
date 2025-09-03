@@ -19,6 +19,8 @@ static bool isItaniumEncoding(const char *S) {
   return std::strncmp(S, "_Z", 2) == 0 || std::strncmp(S, "___Z", 4) == 0;
 }
 
+static bool isOxCamlEncoding(const char *S) { return S[0] == '_' && S[1] == 'O'; }
+
 static bool isRustEncoding(const char *S) { return S[0] == '_' && S[1] == 'R'; }
 
 static bool isDLangEncoding(const std::string &MangledName) {
@@ -50,6 +52,8 @@ bool llvm::nonMicrosoftDemangle(const char *MangledName, std::string &Result) {
   char *Demangled = nullptr;
   if (isItaniumEncoding(MangledName))
     Demangled = itaniumDemangle(MangledName, nullptr, nullptr, nullptr);
+  else if (isOxCamlEncoding(MangledName))
+    Demangled = oxcamlDemangle(MangledName);
   else if (isRustEncoding(MangledName))
     Demangled = rustDemangle(MangledName);
   else if (isDLangEncoding(MangledName))

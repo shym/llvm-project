@@ -10,33 +10,36 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/Demangle/Demangle.h"
-#include "llvm/Demangle/StringView.h"
-#include "llvm/Demangle/Utility.h"
 #include <cassert>
 
-using llvm::itanium_demangle::OutputBuffer;
-using llvm::itanium_demangle::StringView;
+#include "llvm/Demangle/Demangle.h"
+#include "llvm/Demangle/Utility.h"
 
-static unsigned ConsumeUnsignedDecimal(StringView& sv) {
+using llvm::itanium_demangle::OutputBuffer;
+
+#define ERROR (~((unsigned)0))
+
+static unsigned ConsumeUnsignedDecimal(std::string_view& sv) {
   unsigned res = 0, i = 0;
-  while(sv[i] >= '0' && sv[i] <= '9') {
+  while(i < sv.size() && sv[i] >= '0' && sv[i] <= '9') {
     res = res * 10 + (sv[i] - '0');
     i++;
   }
-  assert(i > 0);
-  sv = sv.dropFront(i);
+  sv.remove_prefix(i);
+  if(i == 0)
+    return ERROR;
   return res;
 }
 
-static unsigned ConsumeUnsigned26(StringView& sv) {
+static unsigned ConsumeUnsigned26(std::string_view& sv) {
   unsigned res = 0, i = 0;
-  while(sv[i] >= 'A' && sv[i] <= 'Z') {
+  while(i < sv.size() && sv[i] >= 'A' && sv[i] <= 'Z') {
     res = res * 26 + (sv[i] - 'A');
     i++;
   }
-  assert(i > 0);
-  sv = sv.dropFront(i);
+  sv.remove_prefix(i);
+  if(i == 0)
+    return ERROR;
   return res;
 }
 
@@ -53,9 +56,17 @@ static unsigned lowerhex(char c) {
   }
 }
 
+bool consume_front(std::string_view& sv, char c) {
+  if(sv.size() > 1 && sv[0] == c) {
+    sv.remove_prefix(1);
+    return true;
+  }
+  return false;
+}
+
 char *llvm::oxcamlDemangle(const char *MangledName) {
-  StringView Mangled(MangledName);
-  if(!Mangled.consumeFront("_O"))
+  std::string_view Mangled(MangledName);
+  if(!(consume_front(Mangled, '_') && consume_front(Mangled, 'O')))
     return nullptr;
 
   // Allocate the buffer at a reasonable size, as OutputBuffer allocates 992
@@ -66,41 +77,50 @@ char *llvm::oxcamlDemangle(const char *MangledName) {
     std::terminate();
   OutputBuffer Demangled(DemangledBuffer, Mangled.size());
 
-  if(Mangled.consumeFront('N')) {
+#define ENDONERROR() do {     \
+  std::free(DemangledBuffer); \
+  return nullptr;             \
+} while(0)
+
+  if(consume_front(Mangled, 'N')) {
     // Named symbol
     while(!Mangled.empty()) {
-      if(Mangled.consumeFront('u')) {
+      if(consume_front(Mangled, 'u')) {
         if(!Demangled.empty())
           Demangled << '.';
         unsigned len = ConsumeUnsignedDecimal(Mangled);
-        assert(Mangled.size() >= len);
+        if(len == ERROR || len <= 0 || len > Mangled.size())
+          ENDONERROR();
         size_t split = Mangled.find('_');
-        assert(split < len);
-        StringView coded = Mangled.substr(0, split);
-        StringView raw = Mangled.substr(split+1, len-split-1);
+        if(split >= len) ENDONERROR();
+        std::string_view coded = Mangled.substr(0, split);
+        std::string_view raw = Mangled.substr(split+1, len-split-1);
         while(!coded.empty()) {
           unsigned chunklen = ConsumeUnsigned26(coded);
-          assert(chunklen <= raw.size());
+          if(chunklen == ERROR || chunklen > raw.size())
+            ENDONERROR();
           Demangled << raw.substr(0,chunklen);
-          raw = raw.dropFront(chunklen);
+          raw.remove_prefix(chunklen);
           unsigned i;
           for(i = 0; i+1 < coded.size() && islowerhex(coded[i]); i+=2) {
-            assert(islowerhex(coded[i+1]));
+            if(!islowerhex(coded[i+1]))
+              ENDONERROR();
             char c = (char)(lowerhex(coded[i]) << 4 | lowerhex(coded[i+1]));
             Demangled << c;
           }
-          coded = coded.dropFront(i);
+          coded.remove_prefix(i);
         }
         if(!raw.empty())
           Demangled << raw;
-        Mangled = Mangled.dropFront(len);
-      } else if(!Mangled.consumeFront('_')) {
+        Mangled.remove_prefix(len);
+      } else if(!consume_front(Mangled, '_')) {
         if(!Demangled.empty())
           Demangled << '.';
         unsigned len = ConsumeUnsignedDecimal(Mangled);
-        assert(Mangled.size() >= len);
+        if(len == ERROR || len <= 0 || len > Mangled.size())
+          ENDONERROR();
         Demangled << Mangled.substr(0, len);
-        Mangled = Mangled.dropFront(len);
+        Mangled.remove_prefix(len);
       } else {
         // we are on the _ that separates the symbol per se from its unique id,
         // so we have nothing left to do
@@ -109,7 +129,8 @@ char *llvm::oxcamlDemangle(const char *MangledName) {
     }
   } else {
     // Anonymous symbol
-    assert(Mangled.consumeFront('A'));
+    if(!consume_front(Mangled, 'A'))
+      ENDONERROR();
     char *demangled_name = static_cast<char *>(std::malloc(sizeof("anonymous")));
     std::memcpy(demangled_name, "anonymous", sizeof("anonymous"));
     return demangled_name;

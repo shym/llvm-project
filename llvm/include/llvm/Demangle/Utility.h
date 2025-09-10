@@ -108,6 +108,20 @@ public:
     return *this;
   }
 
+  OutputBuffer &operator+=(std::string_view R) {
+    if (size_t Size = R.size()) {
+      grow(Size);
+      std::memcpy(Buffer + CurrentPosition, R.begin(), Size);
+      CurrentPosition += Size;
+    }
+    return *this;
+  }
+
+  OutputBuffer &operator+=(const char *str) {
+    std::string_view R(str);
+    return (*this += R);
+  }
+
   OutputBuffer &operator+=(char C) {
     grow(1);
     Buffer[CurrentPosition++] = C;
@@ -126,6 +140,10 @@ public:
   }
 
   OutputBuffer &operator<<(StringView R) { return (*this += R); }
+
+  OutputBuffer &operator<<(std::string_view R) { return (*this += R); }
+
+  OutputBuffer &operator<<(const char *R) { return (*this += R); }
 
   OutputBuffer &operator<<(char C) { return (*this += C); }
 

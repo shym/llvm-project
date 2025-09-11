@@ -9,9 +9,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            arch: x86_64
-            artifact_name: llvm-linux-x86_64
+          # - os: ubuntu-latest
+          #   arch: x86_64
+          #   artifact_name: llvm-linux-x86_64
           - os: ubuntu-24.04-arm
             arch: aarch64
             artifact_name: llvm-linux-aarch64
@@ -28,11 +28,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cmake ninja-build python3 build-essential clang
 
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install cmake ninja python3
-
     - name: Build LLVM
       env:
         CC: clang
@@ -46,7 +41,14 @@ jobs:
               -DCMAKE_CXX_COMPILER=clang++ \
               -DLLVM_ENABLE_PROJECTS="clang;lldb" \
               -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
-              -DCMAKE_INSTALL_PREFIX=../install \
               -DLLVM_TARGETS_TO_BUILD="X86;AArch64" \
               ../llvm
-        ninja install
+        ninja lldb
+
+    - name: Test LLDB
+      env:
+        CC: clang
+        CXX: clang++
+      run: |
+        cd build
+        ninja check-lldb

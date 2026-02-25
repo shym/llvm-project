@@ -119,7 +119,7 @@ static bool DecodeIdentifier(StringView& Mangled, OutputBuffer& Demangled) {
 // Decode anonymous location (format: filename_line_col)
 // FIXME Anonymous functions/modules are encoded as: fn(filename:line:col)
 // Returns true on success, false on error
-static bool DecodeAnonymousLocation(StringView& Mangled, OutputBuffer& Demangled, char *typ) {
+static bool DecodeAnonymousLocation(StringView& Mangled, OutputBuffer& Demangled, char typ) {
   // Allocate temporary buffer based on remaining mangled string size
   // The decoded identifier will be at most the size of the remaining mangled string
   size_t buffer_size = Mangled.size();
@@ -157,7 +157,20 @@ static bool DecodeAnonymousLocation(StringView& Mangled, OutputBuffer& Demangled
 
   // Output in format fn(filename:line:col)
   if(underscore_count >= 2) {
-    Demangled << typ << '(';
+    switch(typ) {
+      case 'S':
+        Demangled << "mod";
+        break;
+      case 'L':
+        Demangled << "fn";
+        break;
+      case 'P':
+        Demangled << "partial";
+        break;
+      default:
+        assert(0);
+    }
+    Demangled << '(';
     for(size_t j = 0; j < first_underscore; j++)
       Demangled << temp_buf[j];
     Demangled << ':';
@@ -178,7 +191,6 @@ static bool DecodeAnonymousLocation(StringView& Mangled, OutputBuffer& Demangled
 }
 
 char *llvm::oxcamlDemangle(const char *MangledName) {
-  char *tmp;
   StringView Mangled(MangledName);
   if(!Mangled.consumeFront("_Caml") && !Mangled.consumeFront("__Caml"))
     return nullptr;
@@ -222,12 +234,11 @@ char *llvm::oxcamlDemangle(const char *MangledName) {
           case 'P':  // Partial application
               if(!Demangled.empty())
                   Demangled << '.';
-              tmp = (Mangled[0] == 'S')
-                  ? "mod" : ((Mangled[0] == 'L') ? "fn" : "partial");
               Mangled = Mangled.dropFront(1);
-              if(!DecodeAnonymousLocation(Mangled, Demangled, tmp))
+              if(!DecodeAnonymousLocation(Mangled, Demangled, Mangled[0]))
                   ENDONERROR();
               break;
+
 
           case 'I':  // Inlining
               if(!Demangled.empty())

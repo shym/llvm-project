@@ -341,6 +341,11 @@ ConstString Mangled::GetName(Mangled::NamePreference preference) const {
   // been demangled yet...
   ConstString demangled = GetDemangledName();
 
+  if (Log *log = GetLog(LLDBLog::Demangle)) {
+    if(!m_mangled)
+      LLDB_LOG(log, "GetName on empty input ({0}): {1}", m_mangled, demangled);
+  }
+
   if (preference == ePreferDemangledWithoutArguments) {
     if (Language *lang = Language::FindPlugin(GuessLanguage())) {
       return lang->GetDemangledFunctionNameWithoutArguments(*this);

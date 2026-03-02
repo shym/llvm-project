@@ -190,6 +190,18 @@ static bool DecodeAnonymousLocation(StringView& Mangled, OutputBuffer& Demangled
   return true;
 }
 
+static void TrimStamp(OutputBuffer& Demangled) {
+  size_t pos, end;
+  char *buf = Demangled.getBuffer();
+  pos = end = Demangled.getCurrentPosition() - 1;
+
+  /* Trim the end only if it matches _[0-9]+ */
+  while(pos > 0 && buf[pos] >= '0' && buf[pos] <= '9')
+    pos--;
+  if(pos > 0 && buf[pos] == '_' && pos < end)
+    Demangled.setCurrentPosition(pos);
+}
+
 char *llvm::oxcamlDemangle(const char *MangledName) {
   StringView Mangled(MangledName);
   if(!Mangled.consumeFront("_Caml") && !Mangled.consumeFront("__Caml"))
@@ -252,6 +264,7 @@ char *llvm::oxcamlDemangle(const char *MangledName) {
       }
   }
 
+  TrimStamp(Demangled);
   Demangled << '\0';
 
   return Demangled.getBuffer();

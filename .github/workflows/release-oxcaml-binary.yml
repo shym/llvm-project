@@ -4,6 +4,9 @@ on:
   release:
     types: [created]
 
+env:
+  SCCACHE_GHA_ENABLED: "true"
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -46,6 +49,9 @@ jobs:
       run: |
         brew install cmake ninja python3
 
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+
     - name: Build LLVM
       env:
         CC: clang
@@ -55,7 +61,9 @@ jobs:
         cd build
         cmake -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_C_COMPILER=clang \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER=clang++ \
               -DLLVM_ENABLE_PROJECTS="clang;lld;lldb;mlir" \
               -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \

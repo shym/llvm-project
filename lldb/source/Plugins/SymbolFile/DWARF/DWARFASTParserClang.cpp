@@ -2429,7 +2429,7 @@ DWARFASTParserClang::ParseFunctionFromDWARF(CompileUnit &comp_unit,
       // "main" as its name is never mangled.
       func_name.SetValue(ConstructDemangledNameFromDWARF(die), false);
     } else
-      func_name.SetValue(ConstString(name), false);
+      func_name.SetValue(ConstString(name));
 
     FunctionSP func_sp;
     std::unique_ptr<Declaration> decl_up;

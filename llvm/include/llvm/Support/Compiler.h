@@ -17,6 +17,8 @@
 
 #include "llvm/Config/llvm-config.h"
 
+#include <stdint.h>
+
 #include <stddef.h>
 
 #if defined(_MSC_VER)

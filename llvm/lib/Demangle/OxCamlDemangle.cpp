@@ -205,12 +205,9 @@ static void TrimStamp(OutputBuffer& Demangled) {
 }
 
 char *llvm::oxcamlDemangle(std::string_view Mangled) {
-  if(starts_with(Mangled, "_Caml"))
-    Mangled.remove_prefix(5);
-  else if(starts_with(Mangled, "__Caml"))
-    Mangled.remove_prefix(6);
-  else
+  if(!starts_with(Mangled, "_Caml"))
     return nullptr;
+  Mangled.remove_prefix(5);
 
   // Allocate the buffer at a reasonable size, as OutputBuffer allocates 992
   // bytes when starting from an empty buffer

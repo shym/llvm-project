@@ -44,7 +44,7 @@ static bool isItaniumEncoding(std::string_view S) {
 }
 
 static bool isOxCamlEncoding(std::string_view S) {
-  return starts_with(S, "_Caml") || starts_with(S, "__Caml");
+  return starts_with(S, "_Caml");
 }
 
 static bool isRustEncoding(std::string_view S) { return starts_with(S, "_R"); }

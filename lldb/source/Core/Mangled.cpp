@@ -47,7 +47,7 @@ Mangled::ManglingScheme Mangled::GetManglingScheme(llvm::StringRef const name) {
   if (name.starts_with("?"))
     return Mangled::eManglingSchemeMSVC;
 
-  if (name.starts_with("_Caml") || name.starts_with("__Caml"))
+  if (name.starts_with("_Caml"))
     return Mangled::eManglingSchemeOxCaml;
 
   if (name.starts_with("_R"))
